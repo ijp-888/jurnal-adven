@@ -68,7 +68,7 @@ const dt=s=>new Date(s+'T00:00:00'), fmt=s=>{const d=dt(s);return HARI[d.getDay(
 const clamp=s=>s<START?START:s>END?END:s, TODAY=iso(new Date());
 const DAYS=[];for(let d=dt(START);iso(d)<=END;d.setDate(d.getDate()+1))DAYS.push(iso(d));
 let S={tab:'hari',date:clamp(TODAY),k:{},j:{},acc:sessionStorage.acc||'',hid:0};
-const filled=j=>j&&(j.j1||j.j2||j.j3);
+const filled=j=>j&&(j.j1||j.j2||j.j3||j.j4);
 
 async function api(action,b={}){const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,...b})});const x=await r.json();if(!x.ok)throw new Error(x.error);return x}
 function toast(t){document.querySelector('.toast')?.remove();const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2600)}
@@ -96,9 +96,9 @@ async function enter(acc){S.acc=acc;sessionStorage.acc=acc;$('nav').hidden=false
  catch(e){if(e.message==='SESI_HABIS')return lock();if(localStorage.cache){ingest(JSON.parse(localStorage.cache));toast('Mode luring: data terakhir ditampilkan')}else toast('Gagal memuat. Periksa koneksi.')}
  S.ready=1;render()}
 function ingest(x){S.k={};S.j={};x.konten.forEach(r=>S.k[r[0]]={perayaan:r[1],injil:r[2],insp:r[3],q:[r[4],r[5],r[6]],aksi:r[7],kutip:r[8],sumber:r[9]});
- x.jurnal.forEach(r=>S.j[r[0]]={j1:r[1],j2:r[2],j3:r[3],done:r[4]==='Ya'})}
+ x.jurnal.forEach(r=>S.j[r[0]]={j1:r[1],j2:r[2],j3:r[3],j4:r[6]||'',done:r[4]==='Ya'})}
 
-function collect(){return{j1:$('#j1')?.value||'',j2:$('#j2')?.value||'',j3:$('#j3')?.value||'',done:$('.act')?.classList.contains('on')||false}}
+function collect(){return{j1:$('#j1')?.value||'',j2:$('#j2')?.value||'',j3:$('#j3')?.value||'',j4:$('#j4')?.value||'',done:$('.act')?.classList.contains('on')||false}}
 const draft=()=>{try{localStorage['dr_'+S.date]=JSON.stringify(collect())}catch(e){}};
 async function simpan(){const b=$('#sv'),v=collect();draft();b.disabled=true;b.textContent='Menyimpan…';
  try{await api('save',{access:S.acc,tanggal:S.date,...v});S.j[S.date]=v;localStorage.removeItem('dr_'+S.date);toast('Tersimpan ✓ Terima kasih sudah merefleksikan.')}
@@ -114,7 +114,7 @@ function vHari(){const k=S.k[S.date];if(!k)return'<div class="empty"><div>🕯</
  <div class="row" style="margin:6px 0 14px"><button class="sq" id="pv" ${i<1?'disabled':''}>‹</button><span class="mut">${S.date===TODAY?'Hari ini':S.date<TODAY?'Mengisi hari yang lalu':'Pratinjau'}</span><button class="sq" id="nx" ${i>=DAYS.length-1?'disabled':''}>›</button></div>
  <div class="card"><div class="lbl">Injil · ${esc(k.injil)}</div><p>${esc(k.insp)}</p></div>
  <div class="card"><div class="lbl">Aksi kecil hari ini</div><div class="act ${j.done?'on':''}" id="ac" style="margin-top:10px"><div class="chk">✓</div><div><b>${esc(k.aksi)}</b><div class="mut">Ketuk jika sudah kamu lakukan</div></div></div></div>
- <div class="card"><div class="lbl">${nat?'Refleksi Natal':'Refleksi'}</div>${k.q.map((q,n)=>`<div class="q">${n+1}. ${esc(q)}</div><textarea id="j${n+1}" placeholder="Tulis dengan jujur, singkat pun tak apa…">${esc(j['j'+(n+1)]||'')}</textarea>`).join('')}</div>
+ <div class="card"><div class="lbl">${nat?'Refleksi Natal':'Refleksi'}</div>${k.q.map((q,n)=>`<div class="q">${n+1}. ${esc(q)}</div><textarea id="j${n+1}" placeholder="Tulis dengan jujur, singkat pun tak apa…">${esc(j['j'+(n+1)]||'')}</textarea>`).join('')}<div class="q" style="margin-top:22px">4. Apa kabar hari ini?</div><textarea id="j4" placeholder="Ceritakan apa yang terjadi hari ini…">${esc(j.j4||'')}</textarea></div>
  <button class="btn" id="sv">Simpan refleksi</button>
  <div class="card" style="margin-top:14px"><div class="lbl">${nat?'Renungan Natal':'Renungan Adven'}</div><p class="quote">${esc(k.kutip)}</p><p class="mut">— ${esc(k.sumber)}</p></div>`}
 function vKal(){const n=DAYS.filter(d=>filled(S.j[d])).length,pad=dt(START).getDay();
@@ -123,7 +123,7 @@ function vKal(){const n=DAYS.filter(d=>filled(S.j[d])).length,pad=dt(START).getD
  <p class="mut" style="margin-top:14px">Biru-ungu: sudah terisi · Merah muda: bolong, ketuk untuk mengisi · Cincin: hari ini</p></div>`}
 function vRiw(){const L=DAYS.filter(d=>filled(S.j[d])).reverse();
  if(!L.length)return`<div class="lbl">Riwayat</div><h1>Jurnalku</h1><div class="empty"><div>🕯</div><p><b>Belum ada refleksi</b></p><p>Tulisan pertamamu akan muncul di sini.</p></div><button class="btn" data-go="${clamp(TODAY)}">Mulai menulis</button>`;
- return`<div class="lbl">Riwayat</div><h1>Jurnalku</h1><div style="height:12px"></div>`+L.map(d=>{const j=S.j[d],k=S.k[d]||{q:[]};return`<details class="card"><summary><div class="lbl">${esc(k.perayaan||'')}</div><b>${fmt(d)}</b> ${j.done?'✓':''}<div class="mut">${esc((j.j1||j.j2||j.j3).slice(0,80))}…</div></summary>${[1,2,3].map(n=>j['j'+n]?`<div class="q">${esc(k.q[n-1]||'')}</div><div class="ans">${esc(j['j'+n])}</div>`:'').join('')}<button class="btn ghost" data-go="${d}">Ubah</button></details>`}).join('')+`<button class="btn ghost" id="lk" style="margin-top:6px">🔒 Kunci aplikasi</button>`}
+ return`<div class="lbl">Riwayat</div><h1>Jurnalku</h1><div style="height:12px"></div>`+L.map(d=>{const j=S.j[d],k=S.k[d]||{q:[]};return`<details class="card"><summary><div class="lbl">${esc(k.perayaan||'')}</div><b>${fmt(d)}</b> ${j.done?'✓':''}<div class="mut">${esc((j.j1||j.j2||j.j3||j.j4).slice(0,80))}…</div></summary>${[1,2,3,4].map(n=>j['j'+n]?`<div class="q">${esc(n===4?'Ada apa hari ini?':(k.q[n-1]||''))}</div><div class="ans">${esc(j['j'+n])}</div>`:'').join('')}<button class="btn ghost" data-go="${d}">Ubah</button></details>`}).join('')+`<button class="btn ghost" id="lk" style="margin-top:6px">🔒 Kunci aplikasi</button>`}
 
 function render(){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));$('#app').innerHTML=view();
  const A=$('#app');A.querySelectorAll('textarea').forEach(t=>{const f=()=>{t.style.height='auto';t.style.height=Math.max(88,t.scrollHeight)+'px'};f();t.oninput=()=>{f();draft()}});
